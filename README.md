@@ -8,6 +8,6 @@ canvas 图片切换
 
 # 效果图：
 
-![image](https://github.com/17881055/canvas-cloud/blob/master/images/demo1.jpg)
+![image](https://github.com/17881055/canvas-threejs-transform/blob/master/images/demo1.jpg)
 
-![image](https://github.com/17881055/canvas-cloud/blob/master/images/demo2.jpg)
+![image](https://github.com/17881055/canvas-threejs-transform/blob/master/images/demo2.jpg)
