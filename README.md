@@ -1,4 +1,4 @@
-# canvas-galaxy
+# canvas-transform
 canvas 图片切换
 
 使用 H5 cavnvas 
