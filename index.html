@@ -1,0 +1,236 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Canvas过渡效果</title>
+    <link href="./css/style.css" rel="stylesheet" />
+    <script type="text/javascript" src="js/lib/jquery-1.8.3.min.js"></script>
+    <script type="text/javascript" src="js/uilts/requestAnimationFrame.js"></script>
+    <script type="text/javascript" src="js/lib/three.min.js"></script>
+    <script type="text/javascript" src="js/lib/tween.min.js"></script>
+    <script type="text/javascript" src="js/lib/stats.js"></script>
+    <script type="text/javascript" src="js/lib/anna.js"></script>
+
+</head>
+
+<body class="body">
+    <div id="fps">
+    </div>
+    <div id="canvas_warp">
+    </div>
+</body>
+
+</html>
+
+<script>
+    $(function () {
+        init();
+    })
+
+    function init() {
+
+        const W = 180;
+        const PW = 1800;
+        const PH = 900;
+
+        var canvasConfig = {
+            width: $(window).width(),
+            height: $(window).height()
+        }
+        var cubeMeshs = [];
+        var tweenNum = 0;
+        var textureMap = {
+            'a': {
+                url: 'images/a.jpg',
+                val: undefined
+            },
+            'b': {
+                url: 'images/b.jpg',
+                val: undefined
+            },
+        };
+
+        //
+        var anna = new Anna();
+        anna.start(canvasConfig.width, canvasConfig.height);
+        anna.onRender(handleRender);
+
+        loadTextrue(textureMap);
+
+        function loadTextrue(textureMap) {
+            var imageMap = textureMap;
+            var loader = new THREE.TextureLoader();
+            var promises = [];
+            for (var key in imageMap) {
+
+                promises.push(
+                    new Promise((resolve, reject) => {
+                        var imageObj = imageMap[key];
+                        var url = imageMap[key].url;
+                        loader.load(url,
+                            texture => {
+                                imageObj.val = texture;
+                                if (imageObj.val instanceof THREE.Texture) resolve(imageMap);
+                            },
+                            xhr => {
+                                console.log(url + ' ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+                            },
+                            xhr => {
+                                reject("err");
+                            }
+                        );
+                    })
+                );
+            }
+
+            Promise.all(promises).then(loadedTextures => {
+                addCube();
+            });
+        }
+
+        //addCube
+        function addCube() {
+            //1920*1080
+            for (let y = 0; y < PH / W; y++) {
+                for (let x = 0; x < PW / W; x++) {
+                    cube(W, PW / 2 - W * x, PH / 2 - W * y);
+                }
+            }
+
+            function cube(width, x, y) {
+                var cubeMaterial1 = new THREE.MeshPhongMaterial({
+                    color: 0xffffff,
+                    wireframe: false,
+                    overdraw: true, //渲染物体有缝隙时，将其设为true 
+                    opacity: 1,
+                    transparent: true,
+                    reflectivity: 1,
+                    map: textureMap.a.val
+                });
+
+                var cubeMaterial2 = new THREE.MeshPhongMaterial({
+                    color: 0xffffff,
+                    wireframe: false,
+                    overdraw: true, //渲染物体有缝隙时，将其设为true 
+                    opacity: 1,
+                    transparent: true,
+                    reflectivity: 1,
+                    map: textureMap.b.val
+                });
+
+                var materialArray = [
+                    cubeMaterial1,
+                    new THREE.MeshBasicMaterial({
+                        color: 0xcccccc,
+                        opacity: .3,
+                        transparent: true,
+                        reflectivity: 1,
+                    }),
+                    cubeMaterial2,
+                ];
+
+                var row = Math.abs(-(x - PW / 2) / W);
+                var column = Math.abs(-(y - PH / 2) / W);
+
+                var lt_x = (row * W) / PW;
+                var lt_y = 1 - (column * W) / PH;
+
+                var rt_x = ((row + 1) * W) / PW;
+                var rt_y = 1 - (column * W) / PH;
+
+                var rb_x = ((row + 1) * W) / PW;
+                var rb_y = 1 - ((column + 1) * W) / PH;
+
+                var lb_x = (row * W) / PW;
+                var lb_y = 1 - ((column + 1) * W) / PH;
+
+                var po = [
+                    new THREE.Vector2(rt_x, rt_y),
+                    new THREE.Vector2(rb_x, rb_y),
+                    new THREE.Vector2(lb_x, lb_y),
+                    new THREE.Vector2(lt_x, lt_y),
+                ];
+
+                var po2 = [
+                    new THREE.Vector2(lb_x, lb_y),
+                    new THREE.Vector2(lt_x, lt_y),
+                    new THREE.Vector2(rt_x, rt_y),
+                    new THREE.Vector2(rb_x, rb_y),
+
+                ];
+
+                var cubeGeometry = new THREE.CubeGeometry(width, width, 20);
+                cubeGeometry.faceVertexUvs[0][8] = [po[0], po[1], po[3]];
+                cubeGeometry.faceVertexUvs[0][9] = [po[1], po[2], po[3]];
+
+                cubeGeometry.faceVertexUvs[0][10] = [po2[0], po2[1], po2[3]];
+                cubeGeometry.faceVertexUvs[0][11] = [po2[1], po2[2], po2[3]];
+
+                for (var i = 0; i < cubeGeometry.faces.length; i++) {
+                    var face = cubeGeometry.faces[i];
+                    switch (i) {
+                        case 10:
+                        case 11:
+                            face.materialIndex = 0;
+                            break;
+                        case 8:
+                        case 9:
+                            face.materialIndex = 2;
+                            break;
+                        default:
+                            face.materialIndex = 1;
+                            break;
+                    }
+                }
+
+                var cubeMesh = new THREE.Mesh(cubeGeometry, materialArray);
+                cubeMesh.position.z = -1000;
+                cubeMesh.position.x = x;
+                cubeMesh.position.y = y;
+                cubeMeshs.push(cubeMesh);
+                anna.camera.lookAt(new THREE.Vector3(0, 0, 0));
+                anna.scene.add(cubeMesh);
+
+
+
+            }
+            //
+            transform();
+        }
+
+
+        function transform() {
+            //
+            var x = (cubeMeshs[0].rotation.x == 0) ? 180 * (Math.PI / 180) : 0;
+            console.log(x);
+            setTimeout(function () {
+                const DELAY = 1000;
+                var time = 2300;
+                for (var i = 0; i < cubeMeshs.length; i++) {
+                    var delay = Math.random() * DELAY + 1000;
+                    var cubeMesh = cubeMeshs[i];
+                    new TWEEN.Tween(cubeMesh.rotation)
+                        .delay(delay)
+                        .onComplete(handleComplete)
+                        .easing(TWEEN.Easing.Back.InOut)
+                        .to({
+                            x: x,
+                        }, time).start();
+                }
+            }, 1500)
+        }
+
+        function handleComplete() {
+            tweenNum++;
+            if (tweenNum % cubeMeshs.length === 0) {
+                transform();
+            }
+        }
+
+        //渲染
+        function handleRender(step) {
+            TWEEN.update();
+        }
+
+    }
+</script>

@@ -1,0 +1,10 @@
+
+.body {
+    margin: 0px 0px 0px 0px;
+    background-color: #000000;
+}
+
+#fps {
+    position: absolute;
+    left: 0;
+}
